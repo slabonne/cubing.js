@@ -80,4 +80,15 @@ export const experimentalStickerings: Record<
   "experimental-fto-l2c": { groups: { fto: "Bencisco" } },
   "experimental-fto-lbt": { groups: { fto: "Bencisco" } },
   "experimental-fto-l3t": { groups: { fto: "Bencisco" } },
+  
+  Cross1: { groups: { "3x3x3": "Layer" } },  
+  Corners1: { groups: { "3x3x3": "Layer" } },
+  Crown2: { groups: { "3x3x3": "Layer" } },
+  LastCorner2: { groups: { "3x3x3": "Layer" } },
+  Cross3: { groups: { "3x3x3": "Layer" } },
+  CornersOrientation3 :  { groups: { "3x3x3": "Layer" } },
+  Corner3:  { groups: { "3x3x3": "Layer" } },
+  Corner32:  { groups: { "3x3x3": "Layer" } },
+  Corner33:  { groups: { "3x3x3": "Layer" } },
+  Corner34:  { groups: { "3x3x3": "Layer" } },
 };
