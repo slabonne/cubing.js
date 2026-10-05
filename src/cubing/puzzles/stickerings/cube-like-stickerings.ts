@@ -432,225 +432,166 @@ export async function cubeLikePuzzleStickering(
 	
 	
     // LAYER BY LAYER
-    case "Cross1": {
+    case "layer-cross-U": {
       const U_CROSS = m.and([LL(), EDGES()]);
       const ALL_CENTERS = CENTERS();
       const STICKERING = m.or([U_CROSS, ALL_CENTERS]);
-      puzzleStickering.set(STICKERING, PieceStickering.Regular);
-      puzzleStickering.set(m.not(STICKERING), PieceStickering.Ignored);
+      puzzleStickering.set(STICKERING, PieceStickering.Regular /* Regular */);
+      puzzleStickering.set(m.not(STICKERING), PieceStickering.Ignored /* Ignored */);
       break;
     }
-
-    case "Corners1": {
-      puzzleStickering.set(m.all(), PieceStickering.Ignored);
-      puzzleStickering.set(CENTERS(), PieceStickering.Dim);
+    case "layer-cross-1edge": {
+      const ONE_EDGE = m.and([
+        LL(),
+        EDGES(),
+        m.move("F")
+        // ou autre face selon la pièce voulue
+      ]);
+      const ALL_CENTERS = CENTERS();
+      const STICKERING = m.or([ONE_EDGE, ALL_CENTERS]);
+      puzzleStickering.set(STICKERING, PieceStickering.Regular /* Regular */);
+      puzzleStickering.set(m.not(STICKERING), PieceStickering.Ignored /* Ignored */);
+      break;
+    }
+    case "layer-faceU-corner": {
+      puzzleStickering.set(m.all(), PieceStickering.Ignored /* Ignored */);
+      puzzleStickering.set(CENTERS(), PieceStickering.Regular /* Regular */);
       puzzleStickering.set(
         m.and([m.move("U"), EDGES()]),
-        PieceStickering.Regular,
+        PieceStickering.Dim /* Dim */
       );
       puzzleStickering.set(
         m.and([
           CORNERS(),
           m.move("U"),
           m.move("F"),
-          m.move("R"),
+          m.move("R")
         ]),
-        PieceStickering.Regular,
+        PieceStickering.Regular /* Regular */
       );
       break;
     }
-
-    case "Crown2": {
-      puzzleStickering.set(m.all(), PieceStickering.Ignored);
+    case "layer-crown": {
+      puzzleStickering.set(m.all(), PieceStickering.Ignored /* Ignored */);
       const U_FACE = m.move("U");
       const CORNER_TO_REMOVE = m.and([
         CORNERS(),
         m.move("U"),
         m.move("F"),
-        m.move("R"),
+        m.move("R")
       ]);
       const EDGE_FR = m.and([
         EDGES(),
         m.move("F"),
         m.move("R"),
-        m.not(m.move("U")),
+        m.not(m.move("U"))
       ]);
       const U_WITHOUT_CORNER = m.and([
         U_FACE,
-        m.not(CORNER_TO_REMOVE),
+        m.not(CORNER_TO_REMOVE)
       ]);
-      const RESULT = m.or([
-        U_WITHOUT_CORNER,
-        CENTERS(),
-        EDGE_FR,
-      ]);
-      puzzleStickering.set(RESULT, PieceStickering.Regular);
+      puzzleStickering.set(U_WITHOUT_CORNER, PieceStickering.Dim /* Dim */);
+      puzzleStickering.set(CENTERS(), PieceStickering.Regular /* Regular */);
+      puzzleStickering.set(EDGE_FR, PieceStickering.Regular /* Regular */);
       break;
     }
-
-    case "LastCorner2": {
-      puzzleStickering.set(m.all(), PieceStickering.Ignored);
+    case "layer-faceU-last-corner": {
+      puzzleStickering.set(m.all(), PieceStickering.Ignored /* Ignored */);
       const TOP_TWO_LAYERS = m.not(m.move("D"));
-      puzzleStickering.set(TOP_TWO_LAYERS, PieceStickering.Dim);
+      puzzleStickering.set(TOP_TWO_LAYERS, PieceStickering.Dim /* Dim */);
       const TOP_CORNER = m.and([
         CORNERS(),
         m.move("U"),
         m.move("F"),
-        m.move("R"),
+        m.move("R")
       ]);
-      puzzleStickering.set(TOP_CORNER, PieceStickering.Regular);
+      puzzleStickering.set(TOP_CORNER, PieceStickering.Regular /* Regular */);
       break;
     }
-
-    case "Cross3": {
-      puzzleStickering.set(m.all(), PieceStickering.Ignored);
+    case "layer-faceD-cross": {
+      puzzleStickering.set(m.all(), PieceStickering.Ignored /* Ignored */);
       puzzleStickering.set(
         m.not(m.move("D")),
-        PieceStickering.Dim,
+        PieceStickering.Dim /* Dim */
       );
       puzzleStickering.set(
         m.and([m.move("D"), EDGES()]),
-        PieceStickering.Regular,
+        PieceStickering.Regular /* Regular */
       );
       puzzleStickering.set(
         m.and([m.move("D"), CENTERS()]),
-        PieceStickering.Regular,
+        PieceStickering.Regular /* Regular */
       );
       break;
     }
 
-    case "CornersOrientation3": {
+    case "layer-F2L": {
       puzzleStickering.set(m.all(), PieceStickering.Ignored);
-      puzzleStickering.set(
-        m.not(m.move("D")),
-        PieceStickering.Dim,
-      );
-      puzzleStickering.set(
-        m.and([m.move("D"), EDGES()]),
-        PieceStickering.Dim,
-      );
-      puzzleStickering.set(
-        m.and([m.move("D"), CENTERS()]),
-        PieceStickering.Dim,
-      );
-      const CORNER = m.and([
-        CORNERS(),
-        m.move("D"),
-        m.move("F"),
-        m.move("R"),
-      ]);
-      puzzleStickering.set(CORNER, PieceStickering.Regular);
+
+      const TOP_TWO_LAYERS = m.not(m.move("D"));
+      puzzleStickering.set(TOP_TWO_LAYERS, PieceStickering.Dim);
+
+      // Centre D
+      puzzleStickering.set(CENTER("D"), PieceStickering.Regular);
+
       break;
     }
 
-    case "Corner3": {
+    case "layer-faceD-cross-full": {
       puzzleStickering.set(m.all(), PieceStickering.Ignored);
-      puzzleStickering.set(
-        CENTERS(),
-        PieceStickering.Dim,
-      );
+
+      const TOP_TWO_LAYERS = m.not(m.move("D"));
+      puzzleStickering.set(TOP_TWO_LAYERS, PieceStickering.Dim);
+
+      // Centre D
+      puzzleStickering.set(CENTER("D"), PieceStickering.Regular);
 
       puzzleStickering.set(
-        m.and([m.move("D"), EDGES()]),
-        PieceStickering.Dim,
+        m.or([
+              EDGE(["D", "F"]),
+          EDGE(["D", "R"]),
+          EDGE(["D", "B"]),
+          EDGE(["D", "L"]),
+        ]),
+        PieceStickering.IgnoreNonPrimary,
       );
 
-      const CORNER = m.and([
-        CORNERS(),
-        m.move("D"),
-        m.move("F"),
-        m.move("R"),
-      ]);
-
-      puzzleStickering.set(CORNER, PieceStickering.Regular);
-
-      const MIDDLE_EDGES = m.and([
-      EDGES(),
-      m.not(m.move("U")),
-      m.not(m.move("D")),
-    ]);
-
-    puzzleStickering.set(MIDDLE_EDGES, PieceStickering.Dim);
-    break;
-  }
-
-    case "Corner32": {
-      puzzleStickering.set(m.all(), PieceStickering.Ignored);
-      puzzleStickering.set(
-        CENTERS(),
-        PieceStickering.Dim,
-      );
-      puzzleStickering.set(
-        m.and([m.move("D"), EDGES()]),
-        PieceStickering.Dim,
-      );
-      const CORNERS_2 = m.or([
-        m.and([CORNERS(), m.move("D"), m.move("F"), m.move("R")]), // DFR
-        m.and([CORNERS(), m.move("D"), m.move("F"), m.move("L")]), // DFL
-      ]);
-      puzzleStickering.set(CORNERS_2, PieceStickering.Regular);
-
-      const MIDDLE_EDGES = m.and([
-        EDGES(),
-        m.not(m.move("U")),
-        m.not(m.move("D")),
-      ]);
-
-      puzzleStickering.set(MIDDLE_EDGES, PieceStickering.Dim);
       break;
     }
 
-    case "Corner33": {
-      puzzleStickering.set(m.all(), PieceStickering.Ignored);
+    case "layer-faceD-corners": {
+      puzzleStickering.set(m.all(), PieceStickering.Dim /* Dim */);
       puzzleStickering.set(
-        CENTERS(),
-        PieceStickering.Dim,
+        m.and([
+          CORNERS(),
+          m.move("D")
+        ]),
+        PieceStickering.Regular /* Regular */
       );
-      puzzleStickering.set(
-        m.and([m.move("D"), EDGES()]),
-        PieceStickering.Dim,
-      );
-      const CORNERS_3 = m.or([
-        m.and([CORNERS(), m.move("D"), m.move("F"), m.move("R")]), // DFR
-        m.and([CORNERS(), m.move("D"), m.move("F"), m.move("L")]), // DFL
-        m.and([CORNERS(), m.move("D"), m.move("B"), m.move("R")]), // DBR
-      ]);
-      puzzleStickering.set(CORNERS_3, PieceStickering.Regular);
-
-      const MIDDLE_EDGES = m.and([
-        EDGES(),
-        m.not(m.move("U")),
-        m.not(m.move("D")),
-      ]);
-
-      puzzleStickering.set(MIDDLE_EDGES, PieceStickering.Dim);
       break;
     }
-
-    case "Corner34": {
-      puzzleStickering.set(m.all(), PieceStickering.Ignored);
+    case "layer-faceD-corner": {
+      puzzleStickering.set(m.all(), PieceStickering.Ignored /* Ignored */);
       puzzleStickering.set(
         CENTERS(),
-        PieceStickering.Dim,
+        PieceStickering.Dim /* Dim */
       );
       puzzleStickering.set(
-        m.and([m.move("D"), EDGES()]),
-        PieceStickering.Dim,
+        m.and([
+          EDGES(),
+          m.move("D")
+        ]),
+        PieceStickering.Dim /* Dim */
       );
-      const CORNERS_3 = m.or([
-        m.and([CORNERS(), m.move("D"), m.move("B"), m.move("L")]), // DFR
-        m.and([CORNERS(), m.move("D"), m.move("F"), m.move("R")]), // DFR
-        m.and([CORNERS(), m.move("D"), m.move("F"), m.move("L")]), // DFL
-        m.and([CORNERS(), m.move("D"), m.move("B"), m.move("R")]), // DBR
-      ]);
-      puzzleStickering.set(CORNERS_3, PieceStickering.Regular);
-
-      const MIDDLE_EDGES = m.and([
-        EDGES(),
-        m.not(m.move("U")),
-        m.not(m.move("D")),
-      ]);
-      puzzleStickering.set(MIDDLE_EDGES, PieceStickering.Dim);
+      puzzleStickering.set(
+        m.and([
+          CORNERS(),
+          m.move("D"),
+          m.move("F"),
+          m.move("R")
+        ]),
+        PieceStickering.Regular /* Regular */
+      );
       break;
     }
     default:
