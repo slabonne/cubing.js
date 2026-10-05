@@ -28,6 +28,10 @@ setSearchDebug({ scramblePrefetchLevel: "none" });
 import { randomScrambleForEvent } from "cubing/scramble";
 
 const eventsOrdered = [
+  "444",
+  "444bf",
+  "kilominx",
+  "fto",
   "333",
   "222",
   "555",
@@ -47,19 +51,41 @@ const eventsOrdered = [
   "master_tetraminx",
 ];
 
-const eventsParallel = ["kilominx", "444", "444bf", "fto"];
+const eventsParallel = [];
+const DEFAULT_TIMEOUT_MS = 30_000; // TODO: Use `Temporal.Duration.from(…)` once `Temporal` is available in `bun`: https://github.com/oven-sh/bun/issues/15853
+
+function withTimeout(promiseFn, { abortSignal, timeoutMS } = {}) {
+  const { promise: wrappedPromise, resolve, reject } = Promise.withResolvers();
+
+  const timeout = setTimeout(() => {
+    abortSignal?.();
+    reject(new Error(`Timed out for event: ${event}`));
+  }, timeoutMS ?? DEFAULT_TIMEOUT_MS);
+
+  void (async () => {
+    await promiseFn();
+    // Types are a bit borked, so `timeout.unref()` isn't recognized as valid.
+    // Fortunately the DOM API is still valid in `node`, so we call that instead.
+    clearTimeout(timeout);
+    resolve();
+  })();
+
+  return wrappedPromise;
+}
+
+async function testEvent(event) {
+  await withTimeout(async () =>
+    (await randomScrambleForEvent(event)).log(event),
+  );
+}
 
 await (async () => {
   setSearchDebug({ forceNewWorkerForEveryScramble: true });
-  const parallelPromise = Promise.all(
-    eventsParallel.map(async (event) =>
-      (await randomScrambleForEvent(event)).log(event),
-    ),
-  );
+  const parallelPromise = Promise.all(eventsParallel.map(testEvent));
   setSearchDebug({ forceNewWorkerForEveryScramble: false });
   for (const event of eventsOrdered) {
     console.log(`Generating scramble for event: ${event}... `);
-    (await randomScrambleForEvent(event)).log(event);
+    await testEvent(event);
   }
   await parallelPromise;
 

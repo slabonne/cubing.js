@@ -1,9 +1,12 @@
+import { env } from "node:process";
 import { barelyServe } from "barely-a-dev-server";
-import { $ } from "bun";
 import type { Plugin } from "esbuild";
 import { Path } from "path-class";
 import { PrintableShellCommand } from "printable-shell-command";
 import { needPath } from "../../lib/needPath";
+
+// TODO: debug the phantom crash in `printable-shell-command` so that we don't need this.
+const USE_PREEMPTIVE_CI_WORKAROUND = true;
 
 await needPath(
   Path.resolve("../../../node_modules/barely-a-dev-server", import.meta.url),
@@ -56,12 +59,41 @@ export interface VersionJSON {
 
 async function writeVersionJSON(siteFolder: Path) {
   // https://git-scm.com/docs/git-describe
-  const gitDescribeVersion = (
-    await $`git describe --tags || echo v0.0.0`.text()
-  ).trim();
-  const gitBranch = (await $`git rev-parse --abbrev-ref HEAD`.text()).trim();
-  const date = (await $`date`.text()).trim();
-  const commitHash = (await $`git rev-parse HEAD`.text()).trim();
+  const gitDescribeVersion = await (async () => {
+    if (USE_PREEMPTIVE_CI_WORKAROUND && env["CI"]) {
+      return "(unknown due to CI)";
+    }
+
+    try {
+      return await new PrintableShellCommand("git", [
+        "describe",
+        "--tags",
+      ]).text({
+        trimTrailingNewlines: "single-required",
+      });
+    } catch (e) {
+      if (env["CI"]) {
+        return "(unknown due to CI)";
+      }
+      throw e;
+    }
+  })();
+  const gitBranch = await new PrintableShellCommand("git", [
+    "rev-parse",
+    "--abbrev-ref",
+    "HEAD",
+  ]).text({
+    trimTrailingNewlines: "single-required",
+  });
+  const date = await new PrintableShellCommand("date", []).text({
+    trimTrailingNewlines: "single-required",
+  });
+  const commitHash = await new PrintableShellCommand("git", [
+    "rev-parse",
+    "HEAD",
+  ]).text({
+    trimTrailingNewlines: "single-required",
+  });
   const commitGitHubURL = `https://github.com/cubing/cubing.js/commit/${commitHash}`;
 
   await siteFolder.join("version.json").writeJSON({
@@ -77,6 +109,7 @@ export async function barelyServeSite(srcFolder: string, dev: boolean) {
   const outDir = new Path(dev ? ".temp/dev" : "dist").join(srcFolder);
   await barelyServe({
     entryRoot: new Path("src").join(srcFolder).path,
+    bundleCSS: true,
     outDir: outDir.path, // TODO: accept `Path` arg in the `barelyServe(…)` signature?
     dev,
     devDomain: "cubing.localhost",
@@ -85,6 +118,7 @@ export async function barelyServeSite(srcFolder: string, dev: boolean) {
       chunkNames: "chunks/[name]-[hash]",
       target: "es2022",
       plugins: plugins(dev),
+      loader: { ".woff": "copy", ".woff2": "copy", ".ttf": "copy" },
     },
   });
   if (!dev) {

@@ -14,8 +14,6 @@ export const mainAllowedImports: AllowedImports = {
       "node:process",
       "node:util",
 
-      "bun",
-
       "package.json",
       "cubing",
       "src/metadata",
@@ -38,6 +36,9 @@ export const mainAllowedImports: AllowedImports = {
   "script/build/bin/build-bin.ts": {
     static: ["node:fs/promises"],
   },
+  "script/check-engine-versions.ts": {
+    static: ["bun"],
+  },
   "script/lint/import-restrictions": {
     static: ["@cubing/dev-config"],
   },
@@ -46,6 +47,9 @@ export const mainAllowedImports: AllowedImports = {
   },
   "script/cleanup": {
     static: ["node:fs", "node:fs/promises", "node:path"],
+  },
+  "script/schema": {
+    static: ["zod/mini"],
   },
   // src/bin
   "src/bin": {
@@ -79,7 +83,9 @@ export const mainAllowedImports: AllowedImports = {
     ],
     dynamic: ["src/cubing/puzzles"],
   },
-  "src/cubing/kpuzzle": { static: ["src/cubing/alg", "src/cubing/kpuzzle"] },
+  "src/cubing/kpuzzle": {
+    static: ["src/cubing/alg", "src/cubing/kpuzzle", "zod/mini"],
+  },
   "src/cubing/notation": {
     static: ["src/cubing/alg", "src/cubing/puzzles"],
   },
@@ -96,7 +102,7 @@ export const mainAllowedImports: AllowedImports = {
   },
   "src/cubing/search": {
     static: [
-      "src/cubing/vendor/apache/comlink-everywhere",
+      "@cubing/comlink-everywhere",
       "src/cubing/alg",
       "src/cubing/notation",
       "@cubing/lazy-promise",
@@ -191,7 +197,7 @@ export const specAllowedImports: AllowedImports = {
     static: ["three/src/math"],
   },
   "src/cubing/search": {
-    static: ["random-uint-below"],
+    static: ["@cubing/comlink-everywhere", "random-uint-below"],
   },
   "src/cubing/vendor": {
     static: ["random-uint-below"],

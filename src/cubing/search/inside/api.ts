@@ -5,7 +5,7 @@ import {
   KPuzzle,
   type KPuzzleDefinition,
 } from "../../kpuzzle";
-import { puzzles } from "../../puzzles";
+import { puzzles, wcaEvents } from "../../puzzles";
 import { setIsInsideWorker } from "./inside-worker";
 import { preInitialize222, solve222 } from "./solve/puzzles/2x2x2";
 import {
@@ -20,6 +20,7 @@ import {
   random444Scramble,
 } from "./solve/puzzles/4x4x4";
 import { randomFTOScramble } from "./solve/puzzles/fto";
+import { randomKilominxScramble } from "./solve/puzzles/kilominx";
 import { randomMasterTetraminxScramble } from "./solve/puzzles/master_tetraminx";
 import { solveMegaminx } from "./solve/puzzles/megaminx";
 import { solvePyraminx } from "./solve/puzzles/pyraminx";
@@ -39,6 +40,13 @@ setIsInsideWorker(true);
 let DEBUG_MEASURE_PERF = true;
 export function setDebugMeasurePerf(newDebugMeasurePerf: boolean): void {
   DEBUG_MEASURE_PERF = newDebugMeasurePerf;
+}
+
+let DEBUG_FORCE_TWIPS_FOR_SCRAMBLES = false;
+export function setDebugForceTwipsForScrambles(
+  forceTwipsForScrambles: boolean,
+): void {
+  DEBUG_FORCE_TWIPS_FOR_SCRAMBLES = forceTwipsForScrambles;
 }
 
 function now() {
@@ -93,6 +101,17 @@ async function randomScrambleForEvent(
       );
     }
 
+    function twipsOverride(): Promise<Alg> | undefined {
+      if (
+        DEBUG_FORCE_TWIPS_FOR_SCRAMBLES &&
+        (eventID in wcaEvents || ["kilominx"].includes(eventID))
+      ) {
+        console.log(`Using \`twips\` override for \`${eventID}\` scramble.`);
+        return wasm();
+      }
+      return undefined;
+    }
+
     switch (eventID) {
       // case "333":
       case "222":
@@ -118,30 +137,36 @@ async function randomScrambleForEvent(
       // case "333mbf":
       // case "fto":
       // case "master_tetraminx":
-      case "kilominx":
+      // case "kilominx":
       // case "redi_cube":
       case "baby_fto":
         return wasm();
       case "333":
       case "333oh":
       case "333ft":
-        return measurePerf("random333Scramble", random333Scramble, {
-          isPrefetch: options?.isPrefetch,
-        });
+        return (
+          twipsOverride() ??
+          measurePerf("random333Scramble", random333Scramble, {
+            isPrefetch: options?.isPrefetch,
+          })
+        );
       case "333bf":
       case "333mbf":
-        return measurePerf(
-          "random333OrientedScramble",
-          random333OrientedScramble,
+        return (
+          twipsOverride() ??
+          measurePerf("random333OrientedScramble", random333OrientedScramble)
         );
       case "444":
-        return measurePerf("random444Scramble", random444Scramble, {
-          isPrefetch: options?.isPrefetch,
-        });
+        return (
+          twipsOverride() ??
+          measurePerf("random444Scramble", random444Scramble, {
+            isPrefetch: options?.isPrefetch,
+          })
+        );
       case "444bf":
-        return measurePerf(
-          "random444OrientedScramble",
-          random444OrientedScramble,
+        return (
+          twipsOverride() ??
+          measurePerf("random444OrientedScramble", random444OrientedScramble)
         );
       case "fto":
         return measurePerf("randomFTOScramble", randomFTOScramble, {
@@ -151,6 +176,13 @@ async function randomScrambleForEvent(
         return measurePerf(
           "randomMasterTetraminxScramble",
           randomMasterTetraminxScramble,
+        );
+      case "kilominx":
+        return (
+          twipsOverride() ??
+          measurePerf("randomKilominxScramble", randomKilominxScramble, {
+            isPrefetch: options?.isPrefetch,
+          })
         );
       case "redi_cube":
         return measurePerf("randomRediCubeScramble", randomRediCubeScramble, {
@@ -277,6 +309,10 @@ export const insideAPI = {
 
   setDebugMeasurePerf: async (measure: boolean): Promise<void> => {
     setDebugMeasurePerf(measure);
+  },
+
+  setDebugForceTwipsForScrambles: async (measure: boolean): Promise<void> => {
+    setDebugForceTwipsForScrambles(measure);
   },
 
   solveTwipsToString: async (

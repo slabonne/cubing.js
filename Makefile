@@ -40,7 +40,8 @@ build-lib-js: update-dependencies
 
 .PHONY: build-lib-types
 build-lib-types: update-dependencies
-	${BUN_RUN} ./script/build/lib/build-lib-types.ts
+	${BUN_DX} --package tsdown tsdown --
+	${BUN_RUN} ./script/build/types/fix-web-bluetooth-reference.ts
 
 .PHONY: build-bin
 build-bin: build-lib-js
@@ -172,7 +173,7 @@ test-dist: test-dist-lib test-dist-bin
 test-dist-lib: \
 	test-dist-lib-node-import \
 	test-dist-lib-node-scramble \
-	test-dist-lib-bun-scramble-all-events \
+	test-dist-lib-node-scramble-all-events \
 	test-dist-lib-perf \
 	test-dist-lib-plain-esbuild-compat \
 	test-dist-lib-build-size \
@@ -186,8 +187,8 @@ test-dist-lib-node-import: build-lib-js
 test-dist-lib-node-scramble: build-lib-js
 	${NODE} script/test/dist/lib/cubing/node/scramble/main.js
 
-.PHONY: test-dist-lib-bun-scramble-all-events
-test-dist-lib-bun-scramble-all-events: build-lib-js
+.PHONY: test-dist-lib-node-scramble-all-events
+test-dist-lib-node-scramble-all-events: build-lib-js
 	${BUN} script/test/dist/lib/cubing/node/scramble-all-events/main.js
 
 .PHONY: test-dist-lib-perf
@@ -210,10 +211,18 @@ test-dist-sites-twizzle: install-playwright build-sites
 test-dist-bin: test-dist-bin-shebang test-dist-bin-npm-exec
 
 .PHONY: test-dist-bin-shebang
-test-dist-bin-shebang: build-bin
-	# Note: we're not testing the output, just that these don't exit with an error.
+test-dist-bin-shebang: test-dist-bin-shebang-order test-dist-bin-shebang-puzzle-geometry test-dist-bin-shebang-scramble
+
+.PHONY: test-dist-bin-shebang-order
+test-dist-bin-shebang-order: build-bin
 	time dist/bin/order.js 3x3x3 "R U R'"
+
+.PHONY: test-dist-bin-shebang-puzzle-geometry
+test-dist-bin-shebang-puzzle-geometry: build-bin
 	time dist/bin/puzzle-geometry-bin.js --svg 2x2x2
+
+.PHONY: test-dist-bin-shebang-scramble
+test-dist-bin-shebang-scramble: build-bin
 	time dist/bin/scramble.js 222
 
 .PHONY: test-dist-bin-npm-exec
@@ -228,18 +237,25 @@ format: update-dependencies
 setup: setup-without-playwright install-playwright
 
 .PHONY: setup-without-playwright
-setup-without-playwright: bun-required update-dependencies check-engines
+setup-without-playwright: bun-required update-dependencies
 
 .PHONY: bun-required
 bun-required:
-	@command -v ${BUN} > /dev/null || { echo "\nPlease install \`bun\` to work on this project:\n\n    # from npm\n    npm install --global bun\n\n    # macOS (Homebrew)\n    brew install oven-sh/bun/bun\n\n    # For other options, see: https://bun.sh/\n" && exit 1 ; }
+	@command -v ${BUN} > /dev/null || { echo "\
+Please install \`bun\` to work on this project:\
+\
+    # from npm\
+    npm install --global bun\
+\
+    # macOS (Homebrew)\
+    brew install oven-sh/bun/bun\
+\
+    # For other options, see: https://bun.sh/\
+" && exit 1 ; }
 
 .PHONY: update-dependencies
 update-dependencies: bun-required
 	${BUN} install --frozen-lockfile
-
-.PHONY: check-engines
-check-engines: update-dependencies
 	@${BUN_RUN} "./script/check-engine-versions.ts"
 
 .PHONY: lint
@@ -262,19 +278,19 @@ lint-tsc: lint-tsc-main lint-tsc-lib lint-tsc-lib-no-dom lint-tsc-bin
 
 .PHONY: lint-tsc-main
 lint-tsc-main: update-dependencies
-	${BUN_DX} --package typescript tsc -- --project ./tsconfig.json
+	${BUN_DX} --package @typescript/native-preview tsgo -- --project ./tsconfig.json
 
 .PHONY: lint-tsc-lib
 lint-tsc-lib: update-dependencies
-	${BUN_DX} --package typescript tsc -- --project ./tsconfig.lib.jsonc
+	${BUN_DX} --package @typescript/native-preview tsgo -- --project ./tsconfig.lib.jsonc
 
 .PHONY: lint-tsc-lib-no-dom
 lint-tsc-lib-no-dom: update-dependencies
-	${BUN_DX} --package typescript tsc -- --project ./tsconfig.lib.no-dom.jsonc
+	${BUN_DX} --package @typescript/native-preview tsgo -- --project ./tsconfig.lib.no-dom.jsonc
 
 .PHONY: lint-tsc-bin
 lint-tsc-bin: update-dependencies
-	${BUN_DX} --package typescript tsc -- --project ./src/bin/tsconfig.json
+	${BUN_DX} --package @typescript/native-preview tsgo -- --project ./src/bin/tsconfig.json
 
 .PHONY: check-schemas
 check-schemas: update-dependencies
@@ -303,7 +319,7 @@ postpublish: update-cdn update-create-cubing-app deploy
 .PHONY: postpublish-clear-bun-cache
 postpublish-clear-bun-cache:
 	# Ensure that we get the newly published `cubing` version in other `postpublish` steps.
-	bun pm cache rm
+	# bun pm cache rm # TODO: this is not compatible with the global install cache.
 
 .PHONY: check-for-duplicate-dependencies
 check-for-duplicate-dependencies: update-dependencies
@@ -324,6 +340,9 @@ deploy-twizzle: build-site-twizzle
 deploy-experiments: build-site-experiments
 	${BUN_DX} --package @cubing/deploy deploy --
 
+
+VENDORED_TWIPS_GIT_VERSION_TXT=./src/cubing/vendor/mpl/twips/vendored-twips-git-version.txt
+
 .PHONY: roll-vendored-twips
 roll-vendored-twips:
 	test -d ../twips/ || exit
@@ -332,9 +351,11 @@ roll-vendored-twips:
 	mkdir -p ./src/cubing/vendor/mpl/twips
 	rm -rf ./src/cubing/vendor/mpl/twips/*
 	cp -R ../twips/dist/wasm/* ./src/cubing/vendor/mpl/twips/
+	printf "# " > ${VENDORED_TWIPS_GIT_VERSION_TXT}
+	cd ../twips/ && ${BUN_DX} --package @lgarron-bin/repo repo -- version get >> ../cubing.js/${VENDORED_TWIPS_GIT_VERSION_TXT}
 	# TODO: why does using normal `echo -n` ignore the `-n` here?
-	printf "https://github.com/cubing/twips/tree/" > ./src/cubing/vendor/mpl/twips/vendored-twips-git-version.txt
-	cd ../twips/ && ${BUN_DX} --package @lgarron-bin/repo repo -- version describe >> ../cubing.js/src/cubing/vendor/mpl/twips/vendored-twips-git-version.txt
+	printf "\nhttps://github.com/cubing/twips/tree/" >> ${VENDORED_TWIPS_GIT_VERSION_TXT}
+	git -C ../twips/ rev-parse HEAD >> ${VENDORED_TWIPS_GIT_VERSION_TXT}
 	${BUN_RUN} script/fix-vendored-twips.ts
 
 .PHONY: update-cdn
@@ -354,7 +375,8 @@ update-create-cubing-app: postpublish-clear-bun-cache
 
 .PHONY: publish
 publish:
-	${NPM} publish --globalconfig=$HOME/.config/npm/cubing-publish.npmrc
+	${NPM} whoami || ${NPM} npm login
+	${NPM} publish
 
 .PHONY: pack
 

@@ -6,7 +6,7 @@ To run this file directly:
 bun run -- ./src/bin/scramble.ts 333
 ```
 
-To test completions:
+To add a `scramble` binary to your path and test completions:
 
 ```shell
 # fish (from repo root)
@@ -90,11 +90,15 @@ const args = run(
     description: message`Example: order 3x3x3 "R U R' U R U2' R'"`,
     help: "option",
     completion: {
-      mode: "option",
-      name: "plural",
+      option: {
+        names: ["--completions"],
+        hidden: false,
+      },
     },
     version: {
-      mode: "option",
+      option: {
+        hidden: false,
+      },
       value: packageVersion,
     },
   },

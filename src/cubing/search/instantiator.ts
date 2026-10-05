@@ -1,5 +1,5 @@
 import type { Worker as NodeWorker } from "node:worker_threads";
-import { PortableWorker, wrap } from "../vendor/apache/comlink-everywhere";
+import { PortableWorker, wrap } from "@cubing/comlink-everywhere";
 import type { WorkerAPI } from "./inside/api";
 import { searchOutsideDebugGlobals } from "./outside";
 import {
@@ -64,6 +64,9 @@ export async function instantiateWorkerAPI(): Promise<WorkerAPI> {
   allWorkerAPIPromises.push(workerAPIPromise);
   const insideAPI = await workerAPIPromise;
   insideAPI.setDebugMeasurePerf(searchOutsideDebugGlobals.logPerf);
+  insideAPI.setDebugForceTwipsForScrambles(
+    searchOutsideDebugGlobals.forceTwipsForScrambles,
+  );
   insideAPI.setScramblePrefetchLevel(
     searchOutsideDebugGlobals.scramblePrefetchLevel,
   );
@@ -76,19 +79,7 @@ type FallbackStrategyInfo = [
   warnOnSuccess: null | string,
 ];
 
-async function instantiateWorkerImplementation(): Promise<WorkerAPI> {
-  if (globalThis.location?.protocol === "file:") {
-    console.warn(
-      "This current web page is loaded from the local filesystem (a URL that starts with `file://`). In this situation, `cubing.js` may be unable to generate scrambles or perform searches in some browsers. See: https://js.cubing.net/cubing/scramble/#file-server-required",
-    );
-  }
-
-  function failed(methodDescription?: string) {
-    return `Module worker instantiation${
-      methodDescription ? ` ${methodDescription}` : ""
-    } failed`;
-  }
-
+function fallbackOrder(): FallbackStrategyInfo[] {
   const importMetaResolveStrategy: FallbackStrategyInfo = [
     async () => instantiateModuleWorker(searchWorkerURLImportMetaResolve()),
     "using `import.meta.resolve(…)",
@@ -115,12 +106,35 @@ async function instantiateWorkerImplementation(): Promise<WorkerAPI> {
     "will",
   ];
 
-  const fallbackOrder: FallbackStrategyInfo[] =
+  if (!searchOutsideDebugGlobals.allowLegacyPatternsForWorkerInstantiation) {
+    return [importMetaResolveStrategy];
+  }
+  if (
     searchOutsideDebugGlobals.prioritizeEsbuildWorkaroundForWorkerInstantiation
-      ? [esbuildWorkaroundStrategy, importMetaResolveStrategy, newURLStrategy]
-      : [importMetaResolveStrategy, esbuildWorkaroundStrategy, newURLStrategy];
+  ) {
+    return [
+      esbuildWorkaroundStrategy,
+      importMetaResolveStrategy,
+      newURLStrategy,
+    ];
+  }
+  return [importMetaResolveStrategy, esbuildWorkaroundStrategy, newURLStrategy];
+}
 
-  for (const [fn, description, warnOnSuccess] of fallbackOrder) {
+async function instantiateWorkerImplementation(): Promise<WorkerAPI> {
+  if (globalThis.location?.protocol === "file:") {
+    console.warn(
+      "This current web page is loaded from the local filesystem (a URL that starts with `file://`). In this situation, `cubing.js` may be unable to generate scrambles or perform searches in some browsers. See: https://js.cubing.net/cubing/scramble/#file-server-required",
+    );
+  }
+
+  function failed(methodDescription?: string) {
+    return `Module worker instantiation${
+      methodDescription ? ` ${methodDescription}` : ""
+    } failed`;
+  }
+
+  for (const [fn, description, warnOnSuccess] of fallbackOrder()) {
     try {
       const worker = await fn();
       if (warnOnSuccess) {
@@ -131,12 +145,14 @@ async function instantiateWorkerImplementation(): Promise<WorkerAPI> {
         }
       }
       return worker;
-    } catch {
-      // if (searchOutsideDebugGlobals.showWorkerInstantiationWarnings) {
-      //   console.warn(`${failed(description)}, falling back.`);
-      // }
+    } catch (e) {
+      if (searchOutsideDebugGlobals.showWorkerInstantiationWarnings) {
+        console.warn(`${failed(description)}, falling back.`, e);
+      }
     }
   }
 
-  throw new Error(`${failed()}. There are no more fallbacks available.`);
+  throw new Error(
+    `Module worker instantiation failed. There are no more fallbacks available.`,
+  );
 }
